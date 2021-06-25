@@ -1,5 +1,7 @@
 FROM php:7.4-apache
 
+ENV DOWNLOAD_URL https://github.com/geiser/limesurvey/archive/f22fb0fbf2fe5c2c87903119dcac8cc1f680fdb3.zip
+
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y unzip libc-client-dev libfreetype6-dev libmcrypt-dev libpng-dev libjpeg-dev libldap2-dev zlib1g-dev libkrb5-dev libtidy-dev libzip-dev libsodium-dev && rm -rf /var/lib/apt/lists/* \
 	&& docker-php-ext-configure gd --with-freetype=/usr/include/  --with-jpeg=/usr \
@@ -27,10 +29,17 @@ RUN { \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 
-COPY web/ /var/www/html/
-COPY web/.[a-zA-Z]* /var/www/html/
-
+RUN mkdir /var/www/html/limesurvey
+RUN set -x; \
+    curl -SL "$DOWNLOAD_URL" -o /tmp/lime.zip
+RUN unzip /tmp/lime.zip -d /tmp
+RUN mv /tmp/lime*/* /var/www/html/limesurvey/; \
+    mv /tmp/lime*/.[a-zA-Z]* /var/www/html/limesurvey/
+RUN rm /tmp/lime.zip; \
+    rmdir /tmp/lime* 
+#COPY web/ /var/www/html/limesurvey/
 RUN chown -R www-data:www-data /var/www/html
+
 
 #Set PHP defaults for Limesurvey (allow bigger uploads)
 RUN { \
@@ -42,8 +51,8 @@ RUN { \
         echo 'date.timezone=UTC'; \
 	} > /usr/local/etc/php/conf.d/uploads.ini
 
-VOLUME ["/var/www/html/plugins"]
-VOLUME ["/var/www/html/upload"]
+VOLUME ["/var/www/html/limesurvey/plugins"]
+VOLUME ["/var/www/html/limesurvey/upload"]
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat

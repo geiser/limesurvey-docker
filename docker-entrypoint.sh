@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-cd /var/www/html
+cd /var/www/html/limesurvey
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
@@ -34,7 +34,6 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
     file_env 'LIMESURVEY_ADMIN_PASSWORD' ''
     file_env 'LIMESURVEY_DEBUG' '0'
     file_env 'LIMESURVEY_SQL_DEBUG' '0'
-    file_env 'MYSQL_SSL_CA' ''
     file_env 'LIMESURVEY_USE_INNODB' ''
 
 	# if we're linked to MySQL and thus have credentials already, let's use them
@@ -61,16 +60,6 @@ awk '/lime_/ && c == 0 { c = 1; system("cat") } { print }' application/config/co
 EOPHP
     fi
 
-	# Install BaltimoreCyberTrustRoot.crt.pem
-	if ! [ -e BaltimoreCyberTrustRoot.crt.pem ]; then
-		echo "Downloading BaltimoreCyberTrustroot.crt.pem"
-		if curl -o BaltimoreCyberTrustRoot.crt.pem -fsL "https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem"; then
-            echo "Downloaded successfully"
-        else
-            echo "Failed to download certificate - continuing anyway"
-        fi
-    fi
-
     # see http://stackoverflow.com/a/2705678/433558
     sed_escape_lhs() {
         echo "$@" | sed -e 's/[]\/$*.^|[]/\\&/g'
@@ -95,10 +84,6 @@ EOPHP
     set_config 'debug' "$LIMESURVEY_DEBUG"
     set_config 'debugsql' "$LIMESURVEY_SQL_DEBUG"
 
-	if [ -n "$MYSQL_SSL_CA" ]; then
-		set_config 'attributes' "array(PDO::MYSQL_ATTR_SSL_CA => '\/var\/www\/html\/$MYSQL_SSL_CA', PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false)"
-    fi
-
 	if [ -n "$LIMESURVEY_USE_INNODB" ]; then
 		#If you want to use INNODB - remove MyISAM specification from LimeSurvey code
 		sed -i "/ENGINE=MyISAM/s/\(ENGINE=MyISAM \)//1" application/core/db/MysqlSchema.php
@@ -113,7 +98,7 @@ EOPHP
     chown www-data:www-data -R upload 
     chown www-data:www-data -R application/config
 
-	DBSTATUS=$(TERM=dumb php -- "$LIMESURVEY_DB_HOST" "$LIMESURVEY_DB_USER" "$LIMESURVEY_DB_PASSWORD" "$LIMESURVEY_DB_NAME" "$LIMESURVEY_TABLE_PREFIX" "$MYSQL_SSL_CA" <<'EOPHP'
+	DBSTATUS=$(TERM=dumb php -- "$LIMESURVEY_DB_HOST" "$LIMESURVEY_DB_USER" "$LIMESURVEY_DB_PASSWORD" "$LIMESURVEY_DB_NAME" "$LIMESURVEY_TABLE_PREFIX" <<'EOPHP'
 <?php
 // database might not exist, so let's try creating it (just to be safe)
 
@@ -131,9 +116,6 @@ if (is_numeric($socket)) {
 $maxTries = 10;
 do {
     $con = mysqli_init();
-    if (isset($argv[6]) && !empty($argv[6])) {
-	    mysqli_ssl_set($con,NULL,NULL,"/var/www/html/" . $argv[6],NULL,NULL);
-    }
     $mysql = mysqli_real_connect($con,$host, $argv[2], $argv[3], '', $port, $socket, MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT);
         if (!$mysql) {
                 fwrite($stderr, "\n" . 'MySQL Connection Error: (' . $mysql->connect_errno . ') ' . $mysql->connect_error . "\n");

@@ -95,5 +95,25 @@ Please see [the Docker installation documentation](https://docs.docker.com/insta
 Notes
 -----
 
-This Dockerfile is based on the Dockerfile from the [Wordpress official docker image](https://github.com/docker-library/wordpress/tree/8ab70dd61a996d58c0addf4867a768efe649bf65/php5.6/apache)
+
+Configuration for reverse proxy
+
+```
+ location /limesurvey {
+    #rewrite /limesurvey(.*) $1 break;
+    proxy_pass http://localhost:8099;
+    proxy_http_version  1.1;
+    proxy_cache_bypass  $http_upgrade;
+
+    proxy_set_header Upgrade           $http_upgrade;
+    proxy_set_header Connection        "upgrade";
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  $server_port;
+ }
+```
+
 

@@ -3,6 +3,10 @@
 # Autobuild the Image on Docker Hub with advanced options
 # https://docs.docker.com/docker-hub/builds/advanced/
 
+
+git submodule update --init --recursive
+
+
 # if the host is not equal to the building system architecture, register qemu-*-static.
 
 set -e
@@ -21,5 +25,4 @@ else
     docker run --rm --privileged multiarch/qemu-user-static:register --reset
 fi
 
-git submodule update --init --recursive
 
